@@ -9,7 +9,6 @@ requirement/
 │   ├── generate_index.py        # 生成文件索引和MD5值
 │   ├── txt_to_bmp.py           # 将index.txt转换为index.bmp
 │   ├── vm_player.py            # 虚拟机端自动播放脚本
-│   ├── window.py               # 图片显示工具
 │   ├── tar_to_bmp.py           # TAR到BMP转换工具
 │   ├── start_vm_transfer.bat   # 虚拟机端启动脚本
 │   ├── requirements.txt        # Python依赖包列表
@@ -26,11 +25,9 @@ requirement/
 │   └── README_HOST.md         # 宿主机端专用说明
 │
 ├── deploy.bat                  # 一键部署工具
-├── README_MAIN.md             # 主说明文档
 ├── README.md                  # 完整系统说明
 ├── requirements.txt           # 通用依赖包列表
-├── requirement.txt            # 原始需求文档
-└── snapshot.py               # 原始截图脚本
+└── requirement.txt            # 原始需求文档
 ```
 
 ## 🚀 快速部署
@@ -65,14 +62,6 @@ requirement/
    pip install -r requirements.txt
    ```
 
-3. **创建文件夹**
-   ```bash
-   mkdir input
-   mkdir output
-   mkdir temp
-   mkdir Y:\transferPath
-   ```
-
 #### 宿主机端部署
 
 1. **复制文件**
@@ -85,12 +74,6 @@ requirement/
    ```bash
    cd D:\transfer\
    pip install -r requirements.txt
-   ```
-
-3. **创建文件夹**
-   ```bash
-   mkdir "D:\transferPath"
-   mkdir "D:\sijinnzhi\example"
    ```
 
 ## 📋 使用步骤
@@ -118,6 +101,7 @@ requirement/
 1. **启动传输**
    ```bash
    start_host_transfer.bat
+   # 选择合适的分辨率选项
    ```
 
 2. **等待完成**

@@ -32,7 +32,7 @@ echo ========================================
 echo.
 echo Please select an option according to the external screen resolution.
 echo 1. 1080P (1920x1080) - Default
-echo 2. 4K (3840x2160)
+echo 2. 4K (3840x2160) real pixels: 2560*1600
 echo 3. Custom resolution
 echo 4. Quit
 echo.
@@ -40,18 +40,18 @@ echo.
 set /p choice="Please type your choice(1-4): "
 
 if "%choice%"=="1" (
-    set /a WIDTH=1900
-    set /a HEIGHT=950
+    set /a WIDTH=1910
+    set /a HEIGHT=1070
     set "RESOLUTION=1080P"
     set "SURFFIX="
-    set /a THRESHOLD=1900*950/4
+    set /a THRESHOLD=!WIDTH!*!HEIGHT!/4
 )
 if "%choice%"=="2" (
-    set /a WIDTH=2540
-    set /a HEIGHT=1470
+    set /a WIDTH=2550
+    set /a HEIGHT=1590
     set "RESOLUTION=4K"
     set "SURFFIX=_4K"
-    set /a THRESHOLD=2540*1470/4
+    set /a THRESHOLD=!WIDTH!*!HEIGHT!/4
 )
 if "%choice%"=="3" (
     echo.

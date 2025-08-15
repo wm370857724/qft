@@ -79,26 +79,30 @@ def read_index_file_strict(index_path: str) -> List[Tuple[str, str]]:
     # 合法且至少一条
     return results
 
-def convert_bmp_to_tar(bmp_path: str, tar_path: str) -> bool:
+def convert_bmp_to_tar(bmp_path: str, tar_path: str, bmp_width: str, bmp_height: str) -> bool:
     """将BMP图片转换为TAR文件"""
     try:
         subprocess.run([
             sys.executable, 'bmp_to_tar.py',
             '--input', bmp_path,
-            '--output', tar_path
+            '--output', tar_path,
+            '--width', str(bmp_width),
+            '--height', str(bmp_height)
         ], check=True)
         return True
     except subprocess.CalledProcessError as e:
         print(f"转换失败: {e}")
         return False
 
-def convert_bmp_to_txt(bmp_path: str, txt_path: str) -> bool:
+def convert_bmp_to_txt(bmp_path: str, txt_path: str, bmp_width: str, bmp_height: str) -> bool:
     """将BMP图片转换为TXT文件"""
     try:
         subprocess.run([
             sys.executable, 'bmp_to_txt.py',
             '--input', bmp_path,
-            '--output', txt_path
+            '--output', txt_path,
+            '--width', str(bmp_width),
+            '--height', str(bmp_height)
         ], check=True)
         return True
     except subprocess.CalledProcessError as e:
@@ -149,6 +153,8 @@ signal.signal(signal.SIGTERM, signal_handler)
 
 def main():
     parser = argparse.ArgumentParser(description='Host Screenshot and Convert Script')
+    parser.add_argument('--bmp-width', type=int, default=1910, help='BMP file width pixels')
+    parser.add_argument('--bmp-height', type=int, default=1070, help='BMP file height pixels')
     parser.add_argument('--transfer-path', default='D:\\auto_transfer\\host_files\\transferPath', help='Transfer path for communication')
     parser.add_argument('--output-folder', default='D:\\auto_transfer\\host_files\\transferPath', help='Output folder for screenshots')
     parser.add_argument('--monitor-id', type=int, default=2, help='Monitor ID to capture')
@@ -165,6 +171,8 @@ def main():
         os.makedirs(args.transfer_path, exist_ok=True)
         
         print("=== 宿主机端自动截图脚本 ===")
+        print(f"width: {args.bmp_width, type(args.bmp_width)}")
+        print(f"height: {args.bmp_height, type(args.bmp_height)}")
         print(f"传输路径: {args.transfer_path}")
         print(f"输出文件夹: {args.output_folder}")
         print(f"显示器ID: {args.monitor_id}")
@@ -185,7 +193,7 @@ def main():
             attempt += 1
             print(f"\n[索引捕获] 第 {attempt} 次尝试：截图 index.bmp 并转换为 index.txt")
             capture_screen(args.monitor_id, index_bmp_screenshot)
-            if not convert_bmp_to_txt(index_bmp_screenshot, index_txt_output):
+            if not convert_bmp_to_txt(index_bmp_screenshot, index_txt_output, args.bmp_width, args.bmp_height):
                 print("转换index.txt失败，准备重试...")
                 time.sleep(max(1, args.screenshot_interval))
                 continue
@@ -224,7 +232,7 @@ def main():
                     temp_tar_path = os.path.join(args.output_folder, f"temp_example.tar.{file_number}")
                     print(f"转换为tar文件: {temp_tar_path}")
                     
-                    if convert_bmp_to_tar(screenshot_path, temp_tar_path):
+                    if convert_bmp_to_tar(screenshot_path, temp_tar_path, args.bmp_width, args.bmp_height):
                         # 验证MD5值并保存文件
                         final_tar_path = os.path.join(args.transfer_path, f"example.tar.{file_number}")
                         if verify_and_save_tar_file(temp_tar_path, final_tar_path, expected_md5):

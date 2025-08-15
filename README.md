@@ -21,7 +21,6 @@
 - `host_screenshot.py` - 宿主机端自动截图脚本
 
 ### 辅助脚本
-- `window.py` - 图片显示工具（已修改，支持命令行参数）
 - `tar_to_bmp.py` - TAR到BMP转换（原有）
 - `bmp_to_tar.py` - BMP到TAR转换（已修改，支持命令行参数）
 

@@ -56,13 +56,6 @@ xcopy "vm_files\*" "!vm_path!" /E /Y /Q
 echo 创建必要文件夹...
 if not exist "!vm_path!input" mkdir "!vm_path!input"
 if not exist "!vm_path!output" mkdir "!vm_path!output"
-if not exist "!vm_path!temp" mkdir "!vm_path!temp"
-
-:: 创建共享文件夹
-if not exist "Y:\transferPath" (
-    echo 创建共享文件夹: Y:\transferPath
-    mkdir "Y:\transferPath"
-)
 
 echo.
 echo 虚拟机端部署完成！
@@ -104,11 +97,6 @@ if not exist "!host_path!" (
 :: 复制文件
 echo 复制宿主机端文件...
 xcopy "host_files\*" "!host_path!" /E /Y /Q
-
-:: 创建必要文件夹
-echo 创建必要文件夹...
-if not exist "D:\transferPath" mkdir "D:\transferPath"
-if not exist "D:\sijinnzhi\example" mkdir "D:\sijinnzhi\example"
 
 echo.
 echo 宿主机端部署完成！

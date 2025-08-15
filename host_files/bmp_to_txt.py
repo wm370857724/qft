@@ -85,12 +85,12 @@ def quaternary_to_text(quaternary_str: str) -> str:
         # 如果UTF-8解码失败，尝试其他编码
         return bytes_data.decode('utf-8', errors='ignore')
 
-def bmp_to_txt(bmp_path: str, txt_path: str) -> None:
+def bmp_to_txt(bmp_path: str, txt_path: str, bmp_width: int, bmp_height: int) -> None:
     """将BMP图片转换为文本文件"""
     # 打开并裁剪图像（与bmp_to_tar.py保持一致）
     original_image = Image.open(bmp_path)
-    left, top, width, height = 10, 65, 1900, 950
-    # left, top, width, height = 0, 0, 1920, 1080
+    #left, top, width, height = 5, 5, 1910, 1070
+    left, top, width, height = 5, 5, bmp_width, bmp_height
     cropped_image = original_image.crop((left, top, left + width, top + height))
     
     # 转换为numpy数组
@@ -114,7 +114,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert BMP image to text file')
     parser.add_argument('--input', '-i', required=True, help='Input BMP file path')
     parser.add_argument('--output', '-o', required=True, help='Output text file path')
+    parser.add_argument('--width', type=int, help='BMP file width')
+    parser.add_argument('--height', type=int, help='BMP file height')
     
     args = parser.parse_args()
     
-    bmp_to_txt(args.input, args.output) 
+    bmp_to_txt(args.input, args.output, args.width, args.height) 

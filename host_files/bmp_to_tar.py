@@ -37,11 +37,12 @@ def quaternary_to_binary_optimized(quaternary_str: str) -> bytes:
     
     return bytes(binary_data)
 
-def bmp_to_tar_vectorized(bmp_path: str, tar_path: str):
+def bmp_to_tar_vectorized(bmp_path: str, tar_path: str, bmp_width: int, bmp_height: int):
     """完全向量化的版本，最高性能"""
     # 打开并裁剪图像
     original_image = Image.open(bmp_path)
-    left, top, width, height = 10, 65, 1900, 950
+    #left, top, width, height = 5, 5, 1910, 1070
+    left, top, width, height = 5, 5, bmp_width, bmp_height
     cropped_image = original_image.crop((left, top, left + width, top + height))
     
     # 转换为numpy数组
@@ -91,10 +92,12 @@ def main():
     parser = argparse.ArgumentParser(description='Convert BMP image to TAR file')
     parser.add_argument('--input', '-i', required=True, help='Input BMP file path')
     parser.add_argument('--output', '-o', required=True, help='Output TAR file path')
+    parser.add_argument('--width', type=int, help='BMP file width')
+    parser.add_argument('--height', type=int, help='BMP file height')
     
     args = parser.parse_args()
     
-    bmp_to_tar_vectorized(args.input, args.output)
+    bmp_to_tar_vectorized(args.input, args.output, args.width, args.height)
     print(f"Converted {args.input} to {args.output}")
 
 if __name__ == '__main__':
