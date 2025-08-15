@@ -3,8 +3,10 @@ from PIL import Image
 import numpy as np
 import array
 import argparse
+import concurrent.futures
+import threading
 
-# 预定义颜色映射，避免重复创建
+# 预定义颜色映射
 COLOR_MAP = {
     (255, 0, 0): '0', 
     (0, 255, 0): '1', 
@@ -13,7 +15,7 @@ COLOR_MAP = {
     (0, 0, 0): '4'
 }
 
-# 预定义颜色数组，用于快速计算
+# 预定义颜色数组
 COLOR_ARRAYS = np.array(list(COLOR_MAP.keys()))
 
 def quaternary_to_binary_optimized(quaternary_str: str) -> bytes:
@@ -37,19 +39,10 @@ def quaternary_to_binary_optimized(quaternary_str: str) -> bytes:
     
     return bytes(binary_data)
 
-def bmp_to_tar_vectorized(bmp_path: str, tar_path: str, bmp_width: int, bmp_height: int):
-    """完全向量化的版本，最高性能"""
-    # 打开并裁剪图像
-    original_image = Image.open(bmp_path)
-    #left, top, width, height = 5, 5, 1910, 1070
-    left, top, width, height = 5, 5, bmp_width, bmp_height
-    cropped_image = original_image.crop((left, top, left + width, top + height))
+def process_image_chunk(chunk_pixels, lock, results, chunk_id):
+    """处理图像分块的核心逻辑"""
+    pixels_flat = chunk_pixels.reshape(-1, 3)
     
-    # 转换为numpy数组
-    image_array = np.array(cropped_image)
-    pixels_flat = image_array.reshape(-1, 3)
-    
-    # 向量化处理所有像素
     # 创建规则掩码
     white_mask = np.all(pixels_flat > 180, axis=1)
     black_mask = np.all(pixels_flat < 100, axis=1)
@@ -61,7 +54,7 @@ def bmp_to_tar_vectorized(bmp_path: str, tar_path: str, bmp_width: int, bmp_heig
     result[white_mask] = '3'
     result[black_mask] = '4'
     
-    # 对于不符合规则的像素，使用向量化颜色匹配
+    # 处理其他像素
     other_mask = ~(white_mask | black_mask)
     if np.any(other_mask):
         other_pixels = pixels_flat[other_mask]
@@ -74,12 +67,54 @@ def bmp_to_tar_vectorized(bmp_path: str, tar_path: str, bmp_width: int, bmp_heig
         color_values = list(COLOR_MAP.values())
         result[other_mask] = [color_values[i] for i in min_indices]
     
+    # 将结果存储到共享列表
+    with lock:
+        results[chunk_id] = ''.join(result.tolist())
+
+def bmp_to_tar_vectorized(bmp_path: str, tar_path: str, bmp_width: int, bmp_height: int):
+    """多线程版本的图像转换"""
+    # 打开并裁剪图像
+    original_image = Image.open(bmp_path)
+    cropped_image = original_image.crop((5, 5, 5 + bmp_width, 5 + bmp_height))
+    
+    # 转换为numpy数组
+    image_array = np.array(cropped_image)
+    height = image_array.shape[0]
+    
+    # 将图像分成4个水平条带
+    chunk_height = height // 4
+    chunks = [
+        image_array[i*chunk_height: (i+1)*chunk_height] 
+        for i in range(4)
+    ]
+    
+    # 处理最后可能不完整的部分
+    if height % 4 != 0:
+        chunks[-1] = image_array[3*chunk_height:]
+    
+    # 多线程处理
+    lock = threading.Lock()
+    results = [None] * 4  # 预分配结果存储
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        futures = []
+        for i, chunk in enumerate(chunks):
+            futures.append(executor.submit(
+                process_image_chunk, chunk, lock, results, i
+            ))
+        
+        # 等待所有任务完成
+        concurrent.futures.wait(futures)
+    
+    # 合并结果
+    quaternary_str = ''.join(results)
+    
     # 找到第一个'4'的位置
     try:
-        end_idx = np.where(result == '4')[0][0]
-        quaternary_str = ''.join(result[:end_idx])
-    except IndexError:
-        quaternary_str = ''.join(result)
+        end_idx = quaternary_str.index('4')
+        quaternary_str = quaternary_str[:end_idx]
+    except ValueError:
+        pass  # 如果没有找到'4'，则使用整个字符串
     
     # 转换为二进制数据
     binary_data = quaternary_to_binary_optimized(quaternary_str)
@@ -101,4 +136,4 @@ def main():
     print(f"Converted {args.input} to {args.output}")
 
 if __name__ == '__main__':
-    main() 
+    main()

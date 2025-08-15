@@ -252,7 +252,6 @@ def verify_index_file_md5(original_index_path: str, received_index_path: str, ma
 def run_playback_logic(args, viewer, updater):
     """执行播放逻辑的工作线程函数"""
     try:
-        start_time = time.time()
         # 确保传输路径存在
         # os.makedirs(args.transfer_path, exist_ok=True)
         
@@ -262,7 +261,6 @@ def run_playback_logic(args, viewer, updater):
         print(f"检查间隔: {args.check_interval}秒")
         print(f"最大重试次数: {args.max_retries}")
         print(f"等待超时: {args.wait_timeout}秒")
-        print()
 
         # 检查进度文件
         progress_file = os.path.join(args.transfer_path, args.progress_file)
@@ -306,29 +304,52 @@ def run_playback_logic(args, viewer, updater):
 
         # 步骤4: 读取文件列表并依次播放（支持断点续传）
         files_to_play = read_index_file(received_index_path)
-        print(f"需要播放 {len(files_to_play)} 个文件，{len(processed_files)} 个已跳过")
+        total_files = len(files_to_play)
+        print(f"需要播放 {total_files} 个文件，{len(processed_files)} 个已跳过")
+        
+        # 初始化进度条变量
+        processed_count = 0
+        start_processing_time = time.time()
+        
+        def print_progress_bar(current, total, bar_length=50):
+            """打印文本进度条"""
+            percent = float(current) / total
+            arrow = '#' * int(round(percent * bar_length))
+            spaces = '-' * (bar_length - len(arrow))
+            elapsed_time = time.time() - start_processing_time
+            time_per_file = elapsed_time / current if current > 0 else 0
+            remaining_files = total - current
+            remaining_time = time_per_file * remaining_files
+            
+            print(f"\r进度: [{arrow}{spaces}] {int(round(percent * 100))}% | "
+                  f"已处理: {current}/{total} | "
+                  f"耗时: {elapsed_time:.1f}秒 | "
+                  f"剩余时间: ~{remaining_time:.1f}秒", end='', flush=True)
 
         for i, (file_number, md5_value) in enumerate(files_to_play, 1):
             # 检查是否已处理
             if file_number in processed_files:
-                print(f"跳过已处理文件 {file_number} ({i}/{len(files_to_play)})")
+                print(f"\n跳过已处理文件 {file_number} ({i}/{total_files})")
+                processed_count += 1
+                print_progress_bar(processed_count, total_files)
                 continue
- 
-            print(f"\n播放文件 {i}/{len(files_to_play)}: {file_number}")
 
             # 构建图片文件路径
             image_filename = f"output.{file_number}.bmp"
             image_path = os.path.join(args.output_folder, image_filename)
 
             if not os.path.exists(image_path):
-                print(f"错误: 找不到图片文件: {image_path}")
-                print(f"错误: 找不到图片文件: {image_path}")
+                print(f"\n错误: 找不到图片文件: {image_path}")
+                processed_count += 1
+                print_progress_bar(processed_count, total_files)
                 continue
 
             # 更新图片
-            print(f"更新图片: {image_filename}")
+            print(f"\n更新图片: {image_filename} ({i}/{total_files})")
             if not open_image_with_window(image_path, viewer, updater):
                 print(f"错误: 无法更新图片: {image_filename}")
+                processed_count += 1
+                print_progress_bar(processed_count, total_files)
                 continue
 
             # 等待对应的tar文件生成
@@ -337,25 +358,25 @@ def run_playback_logic(args, viewer, updater):
                 time.sleep(args.check_interval)
 
             print(f"检测到tar文件，准备下一张图片...")
+            processed_count += 1
+            print_progress_bar(processed_count, total_files)
 
             # 短暂延迟，确保文件传输完成
             time.sleep(1)
 
-        print("\n=== 所有文件播放完成 ===")
-        
-        print("\n=== 耗时统计 ===")
-        total_time = time.time() - start_time
-        print(f"执行耗时：{total_time}秒")
+        # 进度条完成后换行
+        print("\n\n=== 所有文件播放完成 ===")
 
     except KeyboardInterrupt:
-        print("\n用户中断程序，进度已保留")
+        print("\n\n用户中断程序，进度已保留")
     except Exception as e:
-        print(f"\n程序发生错误: {e}")
+        print(f"\n\n程序发生错误: {e}")
     finally:
         # 确保清理所有资源
         cleanup_process()
         # 退出应用
         QApplication.quit()
+
 
 def main():
     parser = argparse.ArgumentParser(description='VM Image Player')
