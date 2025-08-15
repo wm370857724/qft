@@ -44,6 +44,21 @@ def calculate_md5(file_path: str) -> str:
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
+def read_progress_file(progress_path: str) -> set[str]:
+    """读取进度文件，返回已处理的文件编号集合"""
+    processed_files = set()
+    if os.path.exists(progress_path):
+        try:
+            with open(progress_path, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        processed_files.add(line)
+            print(f"读取到进度文件: {len(processed_files)} 个文件已处理")
+        except Exception as e:
+            print(f"进度文件读取失败: {e}")
+    return processed_files
+
 def read_index_file(index_path: str) -> List[Tuple[str, str]]:
     """读取index.txt文件，返回文件编号和MD5值的列表（宽松模式）"""
     files = []
@@ -151,14 +166,17 @@ def signal_handler(signum, frame):
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 
+
+
 def main():
     parser = argparse.ArgumentParser(description='Host Screenshot and Convert Script')
+    parser.add_argument('--progress-file', default='progress.txt', help='Progress tracking file')
     parser.add_argument('--bmp-width', type=int, default=1910, help='BMP file width pixels')
     parser.add_argument('--bmp-height', type=int, default=1070, help='BMP file height pixels')
     parser.add_argument('--transfer-path', default='D:\\auto_transfer\\host_files\\transferPath', help='Transfer path for communication')
     parser.add_argument('--output-folder', default='D:\\auto_transfer\\host_files\\transferPath', help='Output folder for screenshots')
     parser.add_argument('--monitor-id', type=int, default=2, help='Monitor ID to capture')
-    parser.add_argument('--screenshot-interval', type=int, default=5, help='Screenshot interval in seconds')
+    parser.add_argument('--screenshot-interval', type=int, default=1, help='Screenshot interval in seconds')
     parser.add_argument('--index-file', default='index.txt', help='Index file name')
     parser.add_argument('--index-bmp', default='index.bmp', help='Index BMP file name')
     parser.add_argument('--max-retries', type=int, default=3, help='(unused)Maximum retry attempts for MD5 verification')
@@ -170,47 +188,69 @@ def main():
         os.makedirs(args.output_folder, exist_ok=True)
         os.makedirs(args.transfer_path, exist_ok=True)
         
+        # 进度文件路径
+        progress_path = os.path.join(args.transfer_path, args.progress_file)
+        
+        # 读取已有进度
+        processed_files = read_progress_file(progress_path)
+
         print("=== 宿主机端自动截图脚本 ===")
-        print(f"width: {args.bmp_width, type(args.bmp_width)}")
-        print(f"height: {args.bmp_height, type(args.bmp_height)}")
+        print(f"图片宽高: {args.bmp_width}x{args.bmp_height}")
         print(f"传输路径: {args.transfer_path}")
         print(f"输出文件夹: {args.output_folder}")
         print(f"显示器ID: {args.monitor_id}")
         print(f"截图间隔: {args.screenshot_interval}秒")
+        print(f"已处理文件数: {len(processed_files)}")
         print(f"最大重试次数(未使用): {args.max_retries}")
-        print()
         
         # 等待5秒后开始执行
         print("等待5秒后开始执行...")
         time.sleep(5)
         
-        # 步骤1: 循环截图index.bmp并转换为index.txt，直到得到有效列表
-        index_bmp_screenshot = os.path.join(args.output_folder, args.index_bmp)
+        # 步骤1: 循环截图index.bmp并转换为index.txt，直到得到有效列表，如果已有进度，则跳过索引捕获
         index_txt_output = os.path.join(args.transfer_path, args.index_file)
         files_to_process: List[Tuple[str, str]] = []
-        attempt = 0
-        while True:
-            attempt += 1
-            print(f"\n[索引捕获] 第 {attempt} 次尝试：截图 index.bmp 并转换为 index.txt")
-            capture_screen(args.monitor_id, index_bmp_screenshot)
-            if not convert_bmp_to_txt(index_bmp_screenshot, index_txt_output, args.bmp_width, args.bmp_height):
-                print("转换index.txt失败，准备重试...")
-                time.sleep(max(1, args.screenshot_interval))
-                continue
-            # 严格校验读取
+        
+        if processed_files:
+            print("检测到已有进度，跳过索引捕获步骤...")
+            # 直接读取现有的index.txt文件
             files_to_process = read_index_file_strict(index_txt_output)
             if len(files_to_process) == 0:
-                print("index.txt 无效（为空/零条/格式错误），继续重试截图...")
-                time.sleep(max(1, args.screenshot_interval))
-                continue
-            else:
-                print(f"index.txt 有效，包含 {len(files_to_process)} 条记录")
-                break
+                print("错误: 无法读取有效的index.txt文件")
+                return
+            print(f"从现有index.txt读取 {len(files_to_process)} 条记录")
+        else:
+            # 没有进度时执行索引捕获
+            index_bmp_screenshot = os.path.join(args.output_folder, args.index_bmp)
+            attempt = 0
+            while True:
+                attempt += 1
+                print(f"\n[索引捕获] 第 {attempt} 次尝试：截图 index.bmp 并转换为 index.txt")
+                capture_screen(args.monitor_id, index_bmp_screenshot)
+                if not convert_bmp_to_txt(index_bmp_screenshot, index_txt_output, args.bmp_width, args.bmp_height):
+                    print("转换index.txt失败，准备重试...")
+                    time.sleep(max(1, args.screenshot_interval))
+                    continue
+                # 严格校验读取
+                files_to_process = read_index_file_strict(index_txt_output)
+                if len(files_to_process) == 0:
+                    print("index.txt 无效（为空/零条/格式错误），继续重试截图...")
+                    time.sleep(max(1, args.screenshot_interval))
+                    continue
+                else:
+                    print(f"index.txt 有效，包含 {len(files_to_process)} 条记录")
+                    break
         
         # 步骤2: 循环截图并转换文件 - 修改为持续重试直到成功
-        print("\n步骤2: 开始循环截图并转换文件（失败将持续重试）...")
-        
+        print("\n步骤2: 开始循环截图并转换文件（失败将持续重试）（支持断点续传）...")
         for i, (file_number, expected_md5) in enumerate(files_to_process, 1):
+            # 检查是否已处理
+            if file_number in processed_files:
+                print(f"跳过已处理文件 {file_number} ({i}/{len(files_to_process)})")
+                continue
+            else:
+                print("asdfasdfasdfasdfasdfasfasdf======")
+
             success = False
             attempt = 0
             
@@ -237,7 +277,11 @@ def main():
                         final_tar_path = os.path.join(args.transfer_path, f"example.tar.{file_number}")
                         if verify_and_save_tar_file(temp_tar_path, final_tar_path, expected_md5):
                             success = True
-                            print(f"✓ 文件 {file_number} 处理成功")
+                            # 更新进度
+                            processed_files.add(file_number)
+                            with open(progress_path, 'a') as f:  # 追加模式
+                                f.write(f"{file_number}\n")
+                            print(f"✓ 文件 {file_number} 处理成功，且已添加到进度")
                         else:
                             print(f"× 文件 {file_number} 验证失败，准备重试...")
                     else:
@@ -245,11 +289,12 @@ def main():
                 except Exception as e:
                     print(f"! 处理过程中发生异常: {e}")
                     traceback.print_exc()
-        
+
         print("\n=== 所有文件处理完成 ===")
         
     except KeyboardInterrupt:
-        print("\n用户中断程序")
+        # 中断时保留进度文件
+        print("\n用户中断程序，进度已保存")
     except Exception as e:
         print(f"\n程序发生错误: {e}")
         import traceback

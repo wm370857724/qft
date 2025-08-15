@@ -252,9 +252,10 @@ def verify_index_file_md5(original_index_path: str, received_index_path: str, ma
 def run_playback_logic(args, viewer, updater):
     """执行播放逻辑的工作线程函数"""
     try:
+        start_time = time.time()
         # 确保传输路径存在
-        os.makedirs(args.transfer_path, exist_ok=True)
-
+        # os.makedirs(args.transfer_path, exist_ok=True)
+        
         print("=== 虚拟机端自动播放脚本 ===")
         print(f"输出文件夹: {args.output_folder}")
         print(f"传输路径: {args.transfer_path}")
@@ -262,6 +263,14 @@ def run_playback_logic(args, viewer, updater):
         print(f"最大重试次数: {args.max_retries}")
         print(f"等待超时: {args.wait_timeout}秒")
         print()
+
+        # 检查进度文件
+        progress_file = os.path.join(args.transfer_path, args.progress_file)
+        processed_files = set()
+        if os.path.exists(progress_file):
+            with open(progress_file, 'r') as f:
+                processed_files = set(f.read().splitlines())
+            print(f"检测到进度文件: {len(processed_files)} 个文件已处理")
 
         # 步骤1: 首先播放index.bmp文件
         index_bmp_path = os.path.join(args.output_folder, args.index_bmp)
@@ -276,7 +285,7 @@ def run_playback_logic(args, viewer, updater):
 
         # 等待5秒让宿主机开始截图
         print("等待5秒让宿主机开始截图...")
-        time.sleep(5)
+        time.sleep(2)
 
         # 步骤2: 检查index.txt文件是否生成
         print("步骤2: 检查index.txt文件...")
@@ -295,11 +304,16 @@ def run_playback_logic(args, viewer, updater):
 
         print("MD5值匹配，开始播放文件...")
 
-        # 步骤4: 读取文件列表并依次播放
+        # 步骤4: 读取文件列表并依次播放（支持断点续传）
         files_to_play = read_index_file(received_index_path)
-        print(f"需要播放 {len(files_to_play)} 个文件")
+        print(f"需要播放 {len(files_to_play)} 个文件，{len(processed_files)} 个已跳过")
 
         for i, (file_number, md5_value) in enumerate(files_to_play, 1):
+            # 检查是否已处理
+            if file_number in processed_files:
+                print(f"跳过已处理文件 {file_number} ({i}/{len(files_to_play)})")
+                continue
+ 
             print(f"\n播放文件 {i}/{len(files_to_play)}: {file_number}")
 
             # 构建图片文件路径
@@ -328,9 +342,13 @@ def run_playback_logic(args, viewer, updater):
             time.sleep(1)
 
         print("\n=== 所有文件播放完成 ===")
+        
+        print("\n=== 耗时统计 ===")
+        total_time = time.time() - start_time
+        print(f"执行耗时：{total_time}秒")
 
     except KeyboardInterrupt:
-        print("\n用户中断程序")
+        print("\n用户中断程序，进度已保留")
     except Exception as e:
         print(f"\n程序发生错误: {e}")
     finally:
@@ -341,6 +359,7 @@ def run_playback_logic(args, viewer, updater):
 
 def main():
     parser = argparse.ArgumentParser(description='VM Image Player')
+    parser.add_argument('--progress-file', default='progress.txt', help='Progress tracking file')
     parser.add_argument('--output-folder', default='output', help='Output folder path')
     parser.add_argument('--transfer-path', default='Y:\\auto_transfer\\host_files\\transferPath', help='Transfer path for communication')
     parser.add_argument('--index-file', default='index.txt', help='Index file name')
@@ -350,7 +369,7 @@ def main():
     parser.add_argument('--wait-timeout', type=int, default=120, help='Timeout for waiting index.txt file')
 
     args = parser.parse_args()
-
+        
     # 创建Qt应用
     app = QApplication(sys.argv)
 

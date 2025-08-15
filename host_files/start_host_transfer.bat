@@ -6,10 +6,30 @@ echo    Host machine auto-transfer startup script
 echo ===============================================
 echo.
 
-:: Clean and create a Transfer folder.
-echo Cleaning up previous files...
-rd /s /q "transferPath" 2>nul
-if not exist "transferPath" mkdir "transferPath"
+
+
+::Set default type value
+set "resumeMode=1"
+
+echo.
+echo Please select whether it is in breakpoint resume mode.
+echo 1. Normal Mode, Delete All Files (Default)
+echo 2. Breakpoint Resume Mode
+echo 3. Quit
+echo.
+
+set /p resumeMode="Please type your choice(1-3): "
+
+if "%resumeMode%"=="1" (
+    :: Clean and create a Transfer folder.
+    echo Cleaning up previous files...
+    rd /s /q "transferPath" 2>nul
+    if not exist "transferPath" mkdir "transferPath"
+)
+if "%resumeMode%"=="2" (
+    echo Do Nothing.
+)
+if "%resumeMode%"=="3" goto End
 
 :: Set Python path
 set "PYTHONEXE=python"
