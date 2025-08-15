@@ -1,0 +1,21 @@
+d:\
+cd sijinzhi
+
+
+
+单个bmp转tar
+将bmp文件命名为example.bmp放到example文件夹下
+执行single_bmp_to_tar_without_PIL.py
+
+
+大量bmp文件转tar
+将bmp文件命名为example.bmp、example_0.bmp、example_1.bmp、...、example_x.bmp形式
+执行multi_bmp_to_tar_without_PIL.py
+
+
+校验MD5
+D:
+cd D:\sijinzhi\example
+certutil -hashfile 1.7z MD5
+certutil -hashfile 1.7z SHA1
+certutil -hashfile 1.7z SHA256
