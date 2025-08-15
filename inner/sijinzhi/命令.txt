@@ -1,0 +1,32 @@
+添加用户环境变量
+PATH
+C:\Program Files\Python36
+
+pip install --trusted-host 128.196.0.125 pillow
+pip install numpy --trusted-host 128.196.0.125
+
+
+python tar_to_bmp.py
+
+python bmp_to_tar.py
+
+
+
+将单个tar文件转bmp
+将文件打包为example.tar文件，1920*1080分辨率显示器最大支持440K
+云桌面最大分辨率2560*1600，最大支持单文件911K
+执行single_tar_to_bmp.py
+
+
+将大文件转bmp
+将大文件放到tar/example目录下，使用7-zip打包为440K分卷tar文件，生成文件名为example.tar.001~example.tar.xxx格式
+执行multi_tars_to_bmps.py即可
+*云桌面最大分辨率2560*1600，最大支持单文件911K，使用multi_tars_to_bmps_911K.py即可
+
+
+校验MD5
+H:
+cd H:\sijinzhi\tar\example
+certutil -hashfile 1.7z MD5
+certutil -hashfile 1.7z SHA1
+certutil -hashfile 1.7z SHA256
